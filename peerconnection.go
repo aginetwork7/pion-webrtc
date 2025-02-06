@@ -1007,8 +1007,8 @@ func (pc *PeerConnection) SetLocalDescription(desc SessionDescription) error {
 	weAnswer := desc.Type == SDPTypeAnswer
 	remoteDesc := pc.RemoteDescription()
 	if weAnswer && remoteDesc != nil {
-		rejected := []string{}
-		_ = setRTPTransceiverCurrentDirection(&desc, currentTransceivers, false, &rejected)
+		rejectedMids := []string{}
+		_ = setRTPTransceiverCurrentDirection(&desc, currentTransceivers, false, &rejectedMids)
 		if err := pc.startRTPSenders(currentTransceivers); err != nil {
 			return err
 		}
@@ -1017,7 +1017,7 @@ func (pc *PeerConnection) SetLocalDescription(desc SessionDescription) error {
 			pc.startRTP(haveLocalDescription, remoteDesc, currentTransceivers)
 		})
 		pc.mu.Lock()
-		pc.removeRTPTransceiver(rejected)
+		pc.removeRTPTransceiver(rejectedMids)
 		pc.mu.Unlock()
 	}
 
@@ -1286,7 +1286,7 @@ func (pc *PeerConnection) startReceiver(incoming trackDetails, receiver *RTPRece
 }
 
 // rejected is only meaningful when SessionDescription is answer
-func setRTPTransceiverCurrentDirection(answer *SessionDescription, currentTransceivers []*RTPTransceiver, weOffer bool, rejected *[]string) error {
+func setRTPTransceiverCurrentDirection(answer *SessionDescription, currentTransceivers []*RTPTransceiver, weOffer bool, rejectedMids *[]string) error {
 	currentTransceivers = append([]*RTPTransceiver{}, currentTransceivers...)
 	for _, media := range answer.parsed.MediaDescriptions {
 		midValue := getMidValue(media)
@@ -1328,8 +1328,8 @@ func setRTPTransceiverCurrentDirection(answer *SessionDescription, currentTransc
 			direction = RTPTransceiverDirectionInactive
 		}
 		// reject transceiver if it is inactive
-		if rejected != nil && media.MediaName.Port.Value == 0 && direction == RTPTransceiverDirectionInactive {
-			*rejected = append(*rejected, midValue)
+		if rejectedMids != nil && media.MediaName.Port.Value == 0 && direction == RTPTransceiverDirectionInactive {
+			*rejectedMids = append(*rejectedMids, midValue)
 		}
 		t.setCurrentDirection(direction)
 	}
