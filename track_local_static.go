@@ -176,7 +176,7 @@ func (s *TrackLocalStaticRTP) writeRTP(p *rtp.Packet) error {
 
 	for _, b := range s.bindings {
 		p.Header.SSRC = uint32(b.ssrc)
-		p.Header.PayloadType = uint8(b.payloadType)
+		// p.Header.PayloadType = uint8(b.payloadType)
 		if _, err := b.writeStream.WriteRTP(&p.Header, p.Payload); err != nil {
 			writeErrs = append(writeErrs, err)
 		}
@@ -291,7 +291,7 @@ func (s *TrackLocalStaticSample) Unbind(t TrackLocalContext) error {
 // If one PeerConnection fails the packets will still be sent to
 // all PeerConnections. The error message will contain the ID of the failed
 // PeerConnections so you can remove them
-func (s *TrackLocalStaticSample) WriteSample(sample media.Sample) error {
+func (s *TrackLocalStaticSample) WriteSample(sample media.Sample, pt uint8) error {
 	s.rtpTrack.mu.RLock()
 	p := s.packetizer
 	clockRate := s.clockRate
@@ -314,6 +314,7 @@ func (s *TrackLocalStaticSample) WriteSample(sample media.Sample) error {
 
 	writeErrs := []error{}
 	for _, p := range packets {
+		p.PayloadType = pt
 		if err := s.rtpTrack.WriteRTP(p); err != nil {
 			writeErrs = append(writeErrs, err)
 		}
