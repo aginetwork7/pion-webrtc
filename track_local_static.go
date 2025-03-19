@@ -291,7 +291,7 @@ func (s *TrackLocalStaticSample) Unbind(t TrackLocalContext) error {
 // If one PeerConnection fails the packets will still be sent to
 // all PeerConnections. The error message will contain the ID of the failed
 // PeerConnections so you can remove them
-func (s *TrackLocalStaticSample) WriteSample(sample media.Sample) error {
+func (s *TrackLocalStaticSample) WriteSample(sample media.Sample, pt uint8, seq uint16, timestamp uint32) error {
 	s.rtpTrack.mu.RLock()
 	p := s.packetizer
 	clockRate := s.clockRate
@@ -314,6 +314,7 @@ func (s *TrackLocalStaticSample) WriteSample(sample media.Sample) error {
 
 	writeErrs := []error{}
 	for _, p := range packets {
+		p.SequenceNumber = seq
 		if err := s.rtpTrack.WriteRTP(p); err != nil {
 			writeErrs = append(writeErrs, err)
 		}
