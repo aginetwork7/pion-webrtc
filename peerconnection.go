@@ -2869,12 +2869,6 @@ func (pc *PeerConnection) generateMatchedSDP(
 			mediaTransceivers := []*RTPTransceiver{transceiver}
 
 			extensions, _ := rtpExtensionsFromMediaDescription(media)
-<<<<<<< HEAD
-			mediaSections = append(
-				mediaSections,
-				mediaSection{id: midValue, transceivers: mediaTransceivers, matchExtensions: extensions, rids: getRids(media)},
-			)
-=======
 			rejected := false
 			if media.MediaName.Port.Value == 0 {
 				for _, attr := range media.Attributes {
@@ -2885,7 +2879,6 @@ func (pc *PeerConnection) generateMatchedSDP(
 				}
 			}
 			mediaSections = append(mediaSections, mediaSection{id: midValue, transceivers: mediaTransceivers, matchExtensions: extensions, rids: getRids(media), rejected: rejected})
->>>>>>> 11fbcffc (feat: delete rejected transceiver)
 		}
 	}
 
