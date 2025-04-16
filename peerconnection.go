@@ -2299,6 +2299,11 @@ func (pc *PeerConnection) removeRTPTransceiver(mids []string) {
 			if err != nil {
 				pc.log.Errorf("Failed to stop transceiver: %s", err)
 			}
+			if transceiver.Sender() != nil {
+				transceiver.setSendingTrack(nil)
+			}
+			transceiver = nil
+			pc.rtpTransceivers[n] = nil
 		} else {
 			pc.rtpTransceivers[n] = transceiver
 			n++
