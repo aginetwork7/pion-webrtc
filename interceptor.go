@@ -61,7 +61,7 @@ func ConfigureNack(mediaEngine *MediaEngine, interceptorRegistry *interceptor.Re
 		return err
 	}
 
-	responder, err := nack.NewResponderInterceptor(nack.DisableCopy())
+	responder, err := nack.NewResponderInterceptor()
 	if err != nil {
 		return err
 	}
