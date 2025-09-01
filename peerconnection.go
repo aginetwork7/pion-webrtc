@@ -2292,20 +2292,22 @@ func (pc *PeerConnection) removeRTPTransceiver(mids []string) {
 		midSet[mid] = struct{}{}
 	}
 
-	n := 0
+	var keptTransceivers []*RTPTransceiver
 	for _, transceiver := range pc.rtpTransceivers {
 		if _, exists := midSet[transceiver.Mid()]; exists {
 			err := transceiver.Stop()
 			if err != nil {
 				pc.log.Errorf("Failed to stop transceiver: %s", err)
 			}
+			if transceiver.Sender() != nil {
+				transceiver.setSendingTrack(nil)
+			}
 		} else {
-			pc.rtpTransceivers[n] = transceiver
-			n++
+			keptTransceivers = append(keptTransceivers, transceiver)
 		}
 	}
-	// Resize the slice to remove unwanted transceivers
-	pc.rtpTransceivers = pc.rtpTransceivers[:n]
+
+	pc.rtpTransceivers = keptTransceivers
 }
 
 // CurrentLocalDescription represents the local description that was
