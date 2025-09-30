@@ -53,7 +53,6 @@ func main() { //nolint:gocognit
 			},
 		},
 	}
-	// callback 返回一个 []dtls.CipherSuite 接口的实例
 
 	callback := func() []dtls.CipherSuite {
 		cs := &customercryptociphersuite.TLSEcdheRsaWithChaCha20Poly1305Sha256{}

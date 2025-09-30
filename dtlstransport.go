@@ -118,7 +118,7 @@ func (t *DTLSTransport) onStateChange(state DTLSTransportState) {
 	}
 	if state == DTLSTransportStateConnected {
 		stat, _ := t.conn.ConnectionState()
-		fmt.Println("加密套件：", stat.GetCipherSuite().String())
+		fmt.Println("selected cipherSuite:", stat.GetCipherSuite().String())
 	}
 }
 
