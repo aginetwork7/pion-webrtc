@@ -116,6 +116,10 @@ func (t *DTLSTransport) onStateChange(state DTLSTransportState) {
 	if handler != nil {
 		handler(state)
 	}
+	if state == DTLSTransportStateConnected {
+		stat, _ := t.conn.ConnectionState()
+		fmt.Println("加密套件：", stat.GetCipherSuite().String())
+	}
 }
 
 // OnStateChange sets a handler that is fired when the DTLS
