@@ -7,8 +7,15 @@
 package webrtc
 
 import (
+	"errors"
+	"fmt"
+	"os"
+
+	"github.com/pion/dtls/v3"
+	"github.com/pion/dtls/v3/pkg/crypto/customercryptociphersuite"
 	"github.com/pion/interceptor"
 	"github.com/pion/logging"
+	"github.com/pion/webrtc/v4/pkg/flagcheck"
 )
 
 // API allows configuration of a PeerConnection
@@ -81,6 +88,18 @@ func WithMediaEngine(m *MediaEngine) func(a *API) {
 func WithSettingEngine(s SettingEngine) func(a *API) {
 	return func(a *API) {
 		a.settingEngine = &s
+		if ret, err := flagcheck.CheckSupportAcceleration(); !ret {
+			if err != nil && errors.Is(err, os.ErrNotExist) {
+				return
+			}
+
+			customerCipherSuitecallback := func() []dtls.CipherSuite {
+				cs := &customercryptociphersuite.TLSEcdheEcdsaWithChaCha20Poly1305Sha256{}
+				return []dtls.CipherSuite{cs}
+			}
+			a.settingEngine.SetDTLSCustomerCipherSuites(customerCipherSuitecallback)
+			fmt.Println("not support hardware acceleration, use ChaCha20-Poly1305 cipher suite for DTLS")
+		}
 	}
 }
 

@@ -1,0 +1,100 @@
+package flagcheck
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+func checkCPUFlags() (bool, error) {
+	file, err := os.Open("/proc/cpuinfo")
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(strings.ToLower(line), "flags") || strings.HasPrefix(strings.ToLower(line), "features") {
+			if strings.Contains(line, " aes ") {
+				return true, nil
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return false, err
+	}
+	return false, nil
+}
+
+func checkKernelCrypto() (bool, error) {
+	file, err := os.Open("/proc/crypto")
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	var (
+		name   string
+		driver string
+		typ    string
+	)
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			if strings.Contains(name, "aes") && (typ == "cipher" || typ == "skcipher") {
+				if !strings.Contains(driver, "generic") && !strings.Contains(driver, "null") {
+					return true, nil
+				}
+			}
+			name, driver, typ = "", "", ""
+			continue
+		}
+
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(parts[0])
+		val := strings.TrimSpace(parts[1])
+
+		switch key {
+		case "name":
+			name = val
+		case "driver":
+			driver = val
+		case "type":
+			typ = val
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return false, err
+	}
+	return false, nil
+}
+
+func CheckSupportAcceleration() (bool, error) {
+	hasCPU, err := checkCPUFlags()
+	if err != nil {
+		return false, fmt.Errorf("failed to check CPU flags: %w", err)
+	}
+	if !hasCPU {
+		return false, nil
+	}
+
+	hasHW, err := checkKernelCrypto()
+	if err != nil {
+		return false, fmt.Errorf("failed to check kernel crypto: %w", err)
+	}
+	if !hasHW {
+		return false, nil
+	}
+
+	return true, nil
+}

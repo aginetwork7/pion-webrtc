@@ -2,9 +2,7 @@ module github.com/pion/webrtc/v4
 
 go 1.24.0
 
-replace github.com/pion/dtls/v3 v3.0.7 => github.com/aginetwork7/dtls/v3 v3.0.0-20251010022616-64d1df5f94a4
-
-//replace github.com/pion/dtls/v3 v3.0.7 => /Users/ld/E/CodePath/dtls
+replace github.com/pion/dtls/v3 v3.0.7 => github.com/aginetwork7/dtls/v3 v3.0.0-20251010075805-cca92f547b53
 
 require (
 	github.com/pion/datachannel v1.5.10
