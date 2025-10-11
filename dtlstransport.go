@@ -118,7 +118,11 @@ func (t *DTLSTransport) onStateChange(state DTLSTransportState) {
 	}
 	if state == DTLSTransportStateConnected {
 		stat, _ := t.conn.ConnectionState()
-		fmt.Println("selected cipherSuite:", stat.GetCipherSuite().String())
+		if t.api.settingEngine.LoggerFactory == nil {
+			t.api.settingEngine.LoggerFactory = logging.NewDefaultLoggerFactory()
+		}
+		logger := t.api.settingEngine.LoggerFactory.NewLogger("drtlsTransport")
+		logger.Warnf("dtls selected cipherSuite:", stat.GetCipherSuite().String())
 	}
 }
 

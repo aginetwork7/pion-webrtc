@@ -8,7 +8,6 @@ package webrtc
 
 import (
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/pion/dtls/v3"
@@ -88,8 +87,14 @@ func WithMediaEngine(m *MediaEngine) func(a *API) {
 func WithSettingEngine(s SettingEngine) func(a *API) {
 	return func(a *API) {
 		a.settingEngine = &s
+		if a.settingEngine.LoggerFactory == nil {
+			a.settingEngine.LoggerFactory = logging.NewDefaultLoggerFactory()
+		}
+		logger := a.settingEngine.LoggerFactory.NewLogger("api")
+
 		if ret, err := flagcheck.CheckSupportAcceleration(); !ret {
 			if err != nil && errors.Is(err, os.ErrNotExist) {
+				logger.Warnf("support hardware acceleration, use default cipher suite for DTLS")
 				return
 			}
 
@@ -98,7 +103,9 @@ func WithSettingEngine(s SettingEngine) func(a *API) {
 				return []dtls.CipherSuite{cs}
 			}
 			a.settingEngine.SetDTLSCustomerCipherSuites(customerCipherSuitecallback)
-			fmt.Println("not support hardware acceleration, use ChaCha20-Poly1305 cipher suite for DTLS")
+			logger.Warnf("not support hardware acceleration, use ChaCha20-Poly1305 cipher suite for DTLS")
+		} else {
+			logger.Warnf("support hardware acceleration, use default cipher suite for DTLS")
 		}
 	}
 }
