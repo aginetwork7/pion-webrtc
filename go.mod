@@ -2,7 +2,7 @@ module github.com/pion/webrtc/v4
 
 go 1.24.0
 
-replace github.com/pion/dtls/v3 v3.0.7 => github.com/aginetwork7/dtls/v3 v3.0.0-20251010075805-cca92f547b53
+replace github.com/pion/dtls/v3 v3.0.7 => github.com/aginetwork7/dtls/v3 v3.0.0-20251011083756-6af5ac875089
 
 require (
 	github.com/pion/datachannel v1.5.10
@@ -18,6 +18,7 @@ require (
 	github.com/pion/srtp/v3 v3.0.4
 	github.com/pion/stun/v3 v3.0.0
 	github.com/pion/transport/v3 v3.0.7
+	github.com/pkg/errors v0.9.1
 	github.com/sclevine/agouti v3.0.0+incompatible
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/net v0.34.0

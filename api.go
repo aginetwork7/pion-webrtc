@@ -94,7 +94,7 @@ func WithSettingEngine(s SettingEngine) func(a *API) {
 
 		if ret, err := flagcheck.CheckSupportAcceleration(); !ret {
 			if err != nil && errors.Is(err, os.ErrNotExist) {
-				logger.Warnf("support hardware acceleration, use default cipher suite for DTLS")
+				logger.Warnf("may support hardware acceleration, use default cipher suite for DTLS")
 				return
 			}
 

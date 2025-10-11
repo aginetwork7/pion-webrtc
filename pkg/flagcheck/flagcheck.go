@@ -2,9 +2,10 @@ package flagcheck
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 func checkCPUFlags() (bool, error) {
@@ -82,7 +83,7 @@ func checkKernelCrypto() (bool, error) {
 func CheckSupportAcceleration() (bool, error) {
 	hasCPU, err := checkCPUFlags()
 	if err != nil {
-		return false, fmt.Errorf("failed to check CPU flags: %w", err)
+		return false, errors.Wrap(err, "failed to check CPU flags")
 	}
 	if !hasCPU {
 		return false, nil
@@ -90,7 +91,7 @@ func CheckSupportAcceleration() (bool, error) {
 
 	hasHW, err := checkKernelCrypto()
 	if err != nil {
-		return false, fmt.Errorf("failed to check kernel crypto: %w", err)
+		return false, errors.Wrap(err, "failed to check kernel crypto")
 	}
 	if !hasHW {
 		return false, nil
