@@ -6,7 +6,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -16,11 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pion/datachannel"
-	"github.com/pion/dtls/v3"
-	"github.com/pion/dtls/v3/pkg/crypto/customercryptociphersuite"
+	"github.com/pion/randutil"
 	"github.com/pion/webrtc/v4"
-	monitor "github.com/pion/webrtc/v4/examples/pion-to-pion"
 )
 
 func signalCandidate(addr string, c *webrtc.ICECandidate) error {
@@ -34,11 +30,8 @@ func signalCandidate(addr string, c *webrtc.ICECandidate) error {
 	return resp.Body.Close()
 }
 
-var monitorwin = monitor.NewMonitor(time.Second, 30, monitor.Send)
-var writable = make(chan struct{}, 1)
-
 func main() { // nolint:gocognit
-	offerAddr := flag.String("offer-address", "127.0.0.1:50000", "Address that the Offer HTTP server is hosted on.")
+	offerAddr := flag.String("offer-address", "localhost:50000", "Address that the Offer HTTP server is hosted on.")
 	answerAddr := flag.String("answer-address", ":60000", "Address that the Answer HTTP server is hosted on.")
 	flag.Parse()
 
@@ -46,8 +39,7 @@ func main() { // nolint:gocognit
 	pendingCandidates := make([]*webrtc.ICECandidate, 0)
 	// Everything below is the Pion WebRTC API! Thanks for using it ❤️.
 
-	s := webrtc.SettingEngine{}
-
+	// Prepare the configuration
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
 			{
@@ -56,25 +48,11 @@ func main() { // nolint:gocognit
 		},
 	}
 
-	callback := func() []dtls.CipherSuite {
-		cs := &customercryptociphersuite.TLSEcdheRsaWithChaCha20Poly1305Sha256{}
-		masterSecret := make([]byte, 48)
-		clientRandom := make([]byte, 32)
-		serverRandom := make([]byte, 32)
-
-		cs.Init(masterSecret, clientRandom, serverRandom, true)
-
-		return []dtls.CipherSuite{cs}
-	}
-	s.SetDTLSCustomerCipherSuites(callback)
-
-	//s.DetachDataChannels()
-	api := webrtc.NewAPI(webrtc.WithSettingEngine(s))
-	peerConnection, err := api.NewPeerConnection(config)
+	// Create a new RTCPeerConnection
+	peerConnection, err := webrtc.NewPeerConnection(config)
 	if err != nil {
 		panic(err)
 	}
-
 	defer func() {
 		if err := peerConnection.Close(); err != nil {
 			fmt.Printf("cannot close peerConnection: %v\n", err)
@@ -102,7 +80,7 @@ func main() { // nolint:gocognit
 	// A HTTP handler that allows the other Pion instance to send us ICE candidates
 	// This allows us to add ICE candidates faster, we don't have to wait for STUN or TURN
 	// candidates which may be slower
-	http.HandleFunc("/candidate", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/candidate", func(w http.ResponseWriter, r *http.Request) { //nolint: revive
 		candidate, candidateErr := io.ReadAll(r.Body)
 		if candidateErr != nil {
 			panic(candidateErr)
@@ -113,7 +91,7 @@ func main() { // nolint:gocognit
 	})
 
 	// A HTTP handler that processes a SessionDescription given to us from the other Pion process
-	http.HandleFunc("/sdp", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/sdp", func(w http.ResponseWriter, r *http.Request) { // nolint: revive
 		sdp := webrtc.SessionDescription{}
 		if err := json.NewDecoder(r.Body).Decode(&sdp); err != nil {
 			panic(err)
@@ -122,19 +100,15 @@ func main() { // nolint:gocognit
 		if err := peerConnection.SetRemoteDescription(sdp); err != nil {
 			panic(err)
 		}
-		peerConnection.CreateDataChannel("data", nil)
+
 		// Create an answer to send to the other process
 		answer, err := peerConnection.CreateAnswer(nil)
 		if err != nil {
 			panic(err)
 		}
 
-		var tmpAnwser = answer
-		if tmpAnwser.SDP != "" {
-			tmpAnwser.SDP += "a=max-message-size:262144\r\n"
-		}
 		// Send our answer to the HTTP server listening in the other process
-		payload, err := json.Marshal(tmpAnwser)
+		payload, err := json.Marshal(answer)
 		if err != nil {
 			panic(err)
 		}
@@ -144,6 +118,7 @@ func main() { // nolint:gocognit
 		} else if closeErr := resp.Body.Close(); closeErr != nil {
 			panic(closeErr)
 		}
+
 		// Sets the LocalDescription, and starts our UDP listeners
 		err = peerConnection.SetLocalDescription(answer)
 		if err != nil {
@@ -180,22 +155,28 @@ func main() { // nolint:gocognit
 		}
 	})
 
-	// Register data channe	l creation handling
+	// Register data channel creation handling
 	peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
 		fmt.Printf("New DataChannel %s %d\n", d.Label(), d.ID())
 
-		d.SetBufferedAmountLowThreshold(1 * 1024 * 1024)
-		d.OnBufferedAmountLow(func() {
-			select {
-			case writable <- struct{}{}:
-			default:
-			}
-		})
-
+		// Register channel opening handling
 		d.OnOpen(func() {
-			monitorwin.Start()
-			go WriteLoop(d)
+			fmt.Printf("Data channel '%s'-'%d' open. Random messages will now be sent to any connected DataChannels every 5 seconds\n", d.Label(), d.ID())
 
+			ticker := time.NewTicker(5 * time.Second)
+			defer ticker.Stop()
+			for range ticker.C {
+				message, sendTextErr := randutil.GenerateCryptoRandomString(15, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+				if sendTextErr != nil {
+					panic(sendTextErr)
+				}
+
+				// Send the message as text
+				fmt.Printf("Sending '%s'\n", message)
+				if sendTextErr = d.SendText(message); sendTextErr != nil {
+					panic(sendTextErr)
+				}
+			}
 		})
 
 		// Register text message handling
@@ -207,46 +188,4 @@ func main() { // nolint:gocognit
 	// Start HTTP server that accepts requests from the offer process to exchange SDP and Candidates
 	// nolint: gosec
 	panic(http.ListenAndServe(*answerAddr, nil))
-}
-
-func WriteLoop(d *webrtc.DataChannel) {
-	raw, _ := d.Detach()
-	if raw != nil {
-		v, ok := raw.(*datachannel.DataChannel)
-		if !ok {
-			panic("类型转换失败")
-		}
-		fmt.Println("datachannel detached")
-		WriteLoopV2(v)
-	} else {
-		buf := make([]byte, 32*1024)
-		for {
-			maxBufferAmount := uint64(2 * 1024 * 1024)
-			if d.BufferedAmount() >= maxBufferAmount {
-				<-writable
-			}
-			rand.Read(buf)
-			if err := d.Send(buf); err != nil {
-				panic(err)
-			}
-			monitorwin.RecordSendBytes(len(buf))
-		}
-	}
-}
-
-func WriteLoopV2(v *datachannel.DataChannel) {
-	buf := make([]byte, 32*1024)
-	for {
-		maxBufferAmount := uint64(2 * 1024 * 1024)
-		if v.BufferedAmount() >= maxBufferAmount {
-			<-writable
-		}
-		rand.Read(buf)
-		_, err2 := v.Write(buf)
-		if err2 != nil {
-			fmt.Println("发送失败: %v", err2)
-			break
-		}
-		monitorwin.RecordSendBytes(len(buf))
-	}
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Check if the CPU supports hardware-accelerated instruction sets (such as Intel AES-NI or ARMv8 AES)
 func checkCPUFlags() (bool, error) {
 	file, err := os.Open("/proc/cpuinfo")
 	if err != nil {
@@ -31,6 +32,7 @@ func checkCPUFlags() (bool, error) {
 	return false, nil
 }
 
+// Check if the kernel has loaded the hardware acceleration algorithm module
 func checkKernelCrypto() (bool, error) {
 	file, err := os.Open("/proc/crypto")
 	if err != nil {
@@ -48,8 +50,9 @@ func checkKernelCrypto() (bool, error) {
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
-			if strings.Contains(name, "aes") && (typ == "cipher" || typ == "skcipher") {
-				if !strings.Contains(driver, "generic") && !strings.Contains(driver, "null") {
+			if strings.Contains(strings.ToLower(name), "aes") && (typ == "cipher" || typ == "skcipher") {
+				if !strings.Contains(strings.ToLower(driver), "generic") &&
+					!strings.Contains(strings.ToLower(driver), "null") {
 					return true, nil
 				}
 			}
