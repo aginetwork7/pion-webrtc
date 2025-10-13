@@ -11,7 +11,7 @@ import (
 func TestFlagCheck(t *testing.T) {
 	ok, err := CheckSupportAcceleration()
 	if err != nil && errors.Is(err, os.ErrNotExist) {
-		fmt.Println("hardware acceleration is available")
+		fmt.Println("hardware acceleration may be available")
 		return
 	}
 	if ok {

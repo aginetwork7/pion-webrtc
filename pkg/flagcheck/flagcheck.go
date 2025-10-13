@@ -18,11 +18,9 @@ func checkCPUFlags() (bool, error) {
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(strings.ToLower(line), "flags") || strings.HasPrefix(strings.ToLower(line), "features") {
-			if strings.Contains(line, " aes ") {
-				return true, nil
-			}
+		line := strings.ToLower(scanner.Text())
+		if (strings.HasPrefix(line, "flags") || strings.HasPrefix(line, "features")) && strings.Contains(line, "aes") {
+			return true, nil
 		}
 	}
 
