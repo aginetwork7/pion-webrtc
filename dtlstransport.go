@@ -116,6 +116,14 @@ func (t *DTLSTransport) onStateChange(state DTLSTransportState) {
 	if handler != nil {
 		handler(state)
 	}
+	if state == DTLSTransportStateConnected {
+		stat, _ := t.conn.ConnectionState()
+		if t.api.settingEngine.LoggerFactory == nil {
+			t.api.settingEngine.LoggerFactory = logging.NewDefaultLoggerFactory()
+		}
+		logger := t.api.settingEngine.LoggerFactory.NewLogger("dtlsTransport")
+		logger.Warnf("dtls selected CipherSuiteID:", stat.CipherSuiteID)
+	}
 }
 
 // OnStateChange sets a handler that is fired when the DTLS
